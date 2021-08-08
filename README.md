@@ -15,14 +15,14 @@ By clicking the desired number from the Key-Pad, options can be chosen, while ro
 * PB4: Right  
 -------------------------------------  
 ### Menu options 
-1. Instructions: Prints Project's name and the number of Pin that should be connected to the Scope.
-2. Modultion Frequency: Prints optional modulation frequency values. ( 2Khz 4KHz 6KHz )
-3. Sync Frequency: Prints optional syncronic frequency values. ( 1Khz 2KHz )
-4. Action: Generates a digital signal which follows the required frequences, using DAC0 while the signal cosists of two parts, the syncronic part, a continuos rectangular signal with the choosen frequency and the modulation part, which is modulation of a binary number choosen with the Key-Pad. (triangle signal for the bit 1 and zero sinal for the bit 0)
+1. Instructions: Prints the Project's name and the number of pins that should be connected to the Scope.
+2. Modulation Frequency: Prints optional modulation frequency values. ( 2Khz 4KHz 6KHz )
+3. Sync Frequency: Prints optional synchronize frequency values. ( 1Khz 2KHz )
+4. Action: Generates a digital signal which follows the required frequencies, using DAC0 while the signal consists of two parts, the synchronic part, continuos rectangular signal with the chosen frequency, and the modulation part, which is modulation of a binary number chosen with the Key-Pad. (triangle signal for the bit 1 and zero signal for the bit 0)
 5. Quit: Stops the program and goes sleep mode.  
 -----------------------------------
-### Hardware
-This projects uses MSP430FG4619, 3 cables cosesting of 8 wires, 9 wires and Banana to BNC cable.
+### Hardware & Connections
+This project uses MSP430FG4619, 3 cables consisting of 8 wires, 9 wires, and Banana to BNC cable.
 Connections are made as follows: 
 * Push Buttons to P1.0-P1.3 
 * IRQ to P2.0
@@ -34,7 +34,3 @@ Connections are made as follows:
 * Signal Out (DAC0) to P6.6
 * LEDs A to Port 9
 * Calls & Rows - Key-Pad to Port 10  
-
-
-
- 
