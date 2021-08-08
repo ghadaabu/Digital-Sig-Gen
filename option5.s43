@@ -1,0 +1,60 @@
+#include  <msp430xG46x.h>
+
+;------------------------------------------------------------------------------- 
+;          Macro define Lcd_cmd 
+;-------------------------------------------------------------------------------           
+
+Lcd_cmd      MACRO command                  ; LCD command MACRO 
+             Delay #del5                    ; dellay of 5msec
+             mov.b command, &P5OUT      
+             call #Lcd_strobe      
+             ENDM   
+;------------------------------------------------------------------------------- 
+;          Macro define Delay - causes delay for LCD SetUp
+;-------------------------------------------------------------------------------           
+             
+Delay        MACRO del_num  ; dellay MACRO (relevant to the LCD settings and command)
+             LOCAL  LOOP
+             mov.w del_num, R11
+LOOP         dec.w R11
+             NOP
+             NOP
+             jnz LOOP
+             ENDM
+
+;*******************************************************************************                    
+             ORG 2400h           
+
+st_Quit1 DB 'BYE, GOODNIGHT  '
+st_Quit2 DB 'CLK PB0 FOR MENU'
+
+del15        EQU 3000     ; dellay of 15msec
+del5         EQU 1000     ; dellay of 5msec
+del02        EQU 40       ; dellay of 0.2msec 
+;*******************************************************************************                    
+
+;===============================================================================
+             MODULE Quit
+             PUBLIC quit
+             EXTERN Delay1s, PRINT_STR, firstMenu, Lcd_data, Lcd_strobe
+;===============================================================================
+
+;-------------------------------------------------------------------------------
+; Prints Quit msg on LCD - option 5
+;-------------------------------------------------------------------------------             
+quit   Lcd_cmd #0x01
+       call #Lcd_data
+       Lcd_cmd #0x01
+       mov #st_Quit1,R5 
+       CALL #PRINT_STR
+       Lcd_cmd #0xC0
+       mov #st_Quit2,R5
+       call #PRINT_STR
+       bic.b #0x0E,&P1IE ;just PBO enable because for back to the menu the user need to push PBO
+       bic.b #0x01,&P2IE
+       ret
+         
+       ENDMOD 
+;===============================================================================
+                
+       END

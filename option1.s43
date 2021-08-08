@@ -1,0 +1,70 @@
+#include  <msp430xG46x.h>
+
+;------------------------------------------------------------------------------- 
+;          Macro define Lcd_cmd 
+;-------------------------------------------------------------------------------           
+
+Lcd_cmd      MACRO command                  ; LCD command MACRO 
+             Delay #del5                    ; dellay of 5msec
+             mov.b command, &P5OUT      
+             call #Lcd_strobe      
+             ENDM   
+;------------------------------------------------------------------------------- 
+;          Macro define Delay - causes delay for LCD SetUp
+;-------------------------------------------------------------------------------           
+
+Delay        MACRO del_num  ; dellay MACRO (relevant to the LCD settings and command)
+             LOCAL  LOOP
+             mov.w del_num, R11
+LOOP         dec.w R11
+             NOP
+             NOP
+             jnz LOOP
+             ENDM
+             
+;*******************************************************************************                                        
+             ORG 1800h           
+
+st_Instruction1 DB 'Digital Signal  '
+st_Instruction2 DB 'Display, connect'
+st_Instruction3 DB 'P6.6 to scoope  '
+
+
+del15        EQU 3000     ; dellay of 15msec
+del5         EQU 1000     ; dellay of 5msec
+del02        EQU 40       ; dellay of 0.2msec 
+;*******************************************************************************                    
+
+;===============================================================================
+             MODULE Instruction
+             PUBLIC instructions
+             EXTERN Delay1s, PRINT_STR, firstMenu, Lcd_data, Lcd_strobe
+;===============================================================================
+
+;-------------------------------------------------------------------------------
+; Prints the instructions - option 1 
+;-------------------------------------------------------------------------------             
+instructions  Lcd_cmd #0x01
+             call #Lcd_data
+             Lcd_cmd #0x01
+             mov #st_Instruction1,R5
+             call #PRINT_STR
+             Lcd_cmd #0xC0
+             mov #st_Instruction2,R5
+             call #PRINT_STR
+             call #Delay1s
+             call #Delay1s
+             Lcd_cmd #0x01
+             mov #st_Instruction3,R5
+             call #PRINT_STR
+             Lcd_cmd #0xC0
+             call #Delay1s
+             call #Delay1s
+             call #Delay1s
+             call #firstMenu
+             ret
+       ENDMOD 
+;===============================================================================
+                
+       END
+             

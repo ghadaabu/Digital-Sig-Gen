@@ -1,0 +1,69 @@
+#include  <msp430xG46x.h>
+
+;===============================================================================
+          NAME    main
+          PUBLIC  main
+          EXTERN  LCD_SETUP,firstMenu,PORT1_ISR,PORT2_ISR,TA0_ISR,TB0_ISR
+;===============================================================================         
+          
+            RSEG    CSTACK                  ; Define stack segment
+;-------------------------------------------------------------------------------
+            RSEG    CODE                    ; Assemble to Flash memory
+;-------------------------------------------------------------------------------
+main        mov.w   #SFE(CSTACK),SP         ; Initialize stackpointer
+StopWDT     mov.w   #WDTPW+WDTHOLD,&WDTCTL  ; Stop WDT
+
+SetupFLL    bis.b   #XCAP14PF,&FLL_CTL0     ; Configure load caps
+OFIFGcheck  bic.b   #OFIFG,&IFG1            ; Clear OFIFG
+            mov.w   #047FFh,R15             ; Wait for OFIFG to set again if
+OFIFGwait   dec.w   R15                     ; not stable yet
+            jnz     OFIFGwait
+            bit.b   #OFIFG,&IFG1            ; Has it set again?
+            jnz     OFIFGcheck              ; If so, wait some more
+
+           
+SetupP1     bic.b #0x0F,&P1DIR ;P1.0-P1.3 are connected to Push Buttons
+            bis.b #0x03,&P1IES
+            bic.b #0x0C,&P1IES
+            bis.b #0x0F,&P1IE
+            bic.b #0x0F,&P1IFG
+          
+           
+
+SetupP2     bic.b #0x01,&P2DIR ;P2.0 is connected to IRQ
+            bis.b #0x01,&P2IES
+            bis.b #0x01,&P2IE
+            bic.b #0x01,&P2IFG
+            
+SetupP3     bis.b #0xe0,&P3DIR  ;P3.5-P3.7 are connected to LCD SetUp
+                                ; p3.7=E,p3.6=R/W, p3.5=RS
+                                
+SetupP5     bis.b #0xff,&P5DIR ; Port5 is connected to LCD Data
+
+SetupP9     bis.b #0xff,&P9DIR  ; Port9 is connected to Leds A
+            bic.b #0xff,&P9OUT
+            
+SetupP10    mov.b #0x0F,&P10DIR  ; P10.0-P10.7 are connected to KeyPad
+            clr.b &P10OUT
+             
+
+SetupLCD    call  #LCD_SETUP
+PrintMenu   call  #firstMenu
+            
+            bis.w #CPUOFF+GIE,SR
+            nop
+     
+;------------------------------------------------------------------------------
+            COMMON  INTVEC                  ; Interrupt Vectors
+;------------------------------------------------------------------------------
+            ORG     RESET_VECTOR            ; MSP430 RESET Vector
+            DW      main  
+            ORG     PORT2_VECTOR
+            DW      PORT2_ISR
+            ORG      PORT1_VECTOR
+            DW      PORT1_ISR
+            ORG     TIMERA0_VECTOR          ; Timer_A0 Vector
+            DW      TA0_ISR                 ;
+            ORG     TIMERB0_VECTOR          ; Timer_B0 Vector
+            DW      TB0_ISR          
+            END
