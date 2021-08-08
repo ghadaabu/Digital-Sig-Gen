@@ -73,7 +73,7 @@ del02        EQU 40       ; dellay of 0.2msec
 ;-------------------------------------------------------------------------------
 
 ;-------------------------------------------------------------------------------
-PORT2_ISR    ;the user clicks a key pad button
+PORT2_ISR    ;Interrupt for Port2, responsible for Key-Pad input. checks the validation of an input and saves the input's value.
 ;-------------------------------------------------------------------------------              
 
 checkR1      mov.b  #0x07,&P10OUT 
@@ -283,7 +283,7 @@ exitK        clr.b   &P10OUT
                        
 
 ;-------------------------------------------------------------------------------
-PORT1_ISR    ;the user push one of the button
+PORT1_ISR    ;Interrupt for Port1, responsible for Push Buttons input. involves in rolling up and down the menu.
 ;-------------------------------------------------------------------------------             
              bit.b  #0x01,&P1IFG   ;check if P1.0 is pushed
              jnz    P1_0 
