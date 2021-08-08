@@ -1,0 +1,399 @@
+#include  <msp430xG46x.h>
+
+;------------------------------------------------------------------------------- 
+;          Macro define Lcd_cmd 
+;-------------------------------------------------------------------------------           
+
+Lcd_cmd      MACRO command                  ; LCD command MACRO 
+             Delay #del5                    ; dellay of 5msec
+             mov.b command, &P5OUT      
+             call #Lcd_strobe      
+             ENDM   
+;------------------------------------------------------------------------------- 
+;          Macro define Delay - causes delay for LCD SetUp
+;-------------------------------------------------------------------------------           
+             
+Delay        MACRO del_num  
+             LOCAL  LOOP
+             mov.w del_num, R11
+LOOP         dec.w R11
+             NOP
+             NOP
+             jnz LOOP
+             ENDM
+;------------------------------------------------------------------------------- 
+;          Macro define debounce - causes delay according to the pushed button 
+;                                  gets number of cycles 
+;-------------------------------------------------------------------------------           
+
+Debounce     MACRO  cycles
+             LOCAL  L
+             mov.w  cycles,R15     
+L            dec.w  R15                     
+             jnz    L
+             ENDM
+             
+;*******************************************************************************                    
+             ORG 1200h
+    
+state     DB 0
+flag      DB 0
+Sync      DB 0
+BSignal   DB 0
+ModFreq   DB 0
+updown    DB 0 
+
+
+s1  DB '1.Instructions  '  
+s2  DB '2.Modulation Fre'
+s22 DB '2. .. Frequency '
+s3  DB '3.Sync Frequency'
+s4  DB '4.Action        '
+s5  DB '5.Quit          '
+st_error  DB 'Error, try again'
+
+PullUp      EQU  280  ;wait of 0.8msec = (3op*280)/2^20
+PullDown    EQU  70   ;wait of 0.2msec = (3op*70)/2^20
+del15        EQU 3000     ; dellay of 15msec
+del5         EQU 1000     ; dellay of 5msec
+del02        EQU 40       ; dellay of 0.2msec
+;*******************************************************************************                    
+
+;===============================================================================
+          NAME    Functions
+          PUBLIC  Delay1s,PORT2_ISR,PORT1_ISR
+          EXTERN  LCD_SETUP,Lcd_strobe, Lcd_data, PRINT_STR, firstMenu
+          EXTERN  Modulation, instructions, syncfreq,ActionMSG
+          EXTERN  quit,PrintChoice,Action,PrintQuitMsg
+          EXTERN  TA0_ISR,TB0_ISR
+;===============================================================================
+
+;-------------------------------------------------------------------------------
+          RSEG   CODE
+;-------------------------------------------------------------------------------
+
+;-------------------------------------------------------------------------------
+PORT2_ISR    ;Interrupt for Port2, responsible for Key-Pad input. checks the validation of an input and saves the input's value.
+;-------------------------------------------------------------------------------              
+
+checkR1      mov.b  #0x07,&P10OUT 
+             bit.b  #0x80,P10IN  ; 1 
+             jz     KeyPad1
+             bit.b  #0x40,P10IN  ; 2
+             jz     KeyPad2
+             bit.b  #0x20,P10IN  ; 3 
+             jz     KeyPad3
+             bit.b  #0x10,P10IN  ; A
+             jz     KeyPadA
+             
+checkR2      mov.b #0x0B,&P10OUT 
+             bit.b #0x80,P10IN  ; 4
+             jz    KeyPad4
+             bit.b #0x40,P10IN  ; 5 
+             jz    KeyPad5
+             bit.b #0x20,P10IN  ; 6 
+             jz    KeyPad6
+             bit.b #0x10,P10IN  ; B 
+             jz    KeyPadB
+             
+checkR3      mov.b #0x0D,&P10OUT 
+             bit.b #0x80,P10IN  ; 7 
+             jz    KeyPad7
+             bit.b #0x40,P10IN  ; 8 
+             jz    KeyPad8
+             bit.b #0x20,P10IN  ; 9 
+             jz    KeyPad9
+             bit.b #0x10,P10IN  ; C 
+             jz    KeyPadC
+             
+checkR4      mov.b #0x0E,&P10OUT 
+             bit.b #0x80,P10IN  ; F 
+             jz    KeyPadF
+             bit.b #0x40,P10IN  ; 0 
+             jz    KeyPad0
+             bit.b #0x20,P10IN  ; E 
+             jz    KeyPadE
+             bit.b #0x10,P10IN  ; D 
+             jz    KeyPadD
+             
+             
+KeyPad0      mov #0x00,R14
+             jmp check
+KeyPad1      mov #0x01,R14
+             jmp check
+KeyPad2      mov #0x02,R14
+             jmp check
+KeyPad3      mov #0x03,R14
+             jmp check
+KeyPad4      mov #0x04,R14
+             jmp check
+KeyPad5      mov #0x05,R14
+             jmp check
+KeyPad6      mov #0x06,R14
+             jmp check
+KeyPad7      mov #0x07,R14
+             jmp check
+KeyPad8      mov #0x08,R14
+             jmp check
+KeyPad9      mov #0x09,R14
+             jmp check
+KeyPadA      mov #0x0A,R14
+             jmp check
+KeyPadB      mov #0x0B,R14
+             jmp check
+KeyPadC      mov #0x0C,R14
+             jmp check
+KeyPadD      mov #0x0D,R14
+             jmp check
+KeyPadE      mov #0x0E,R14
+             jmp check
+KeyPadF      mov #0x0F,R14
+             jmp check
+             
+;checks if the user is selecting menu option 
+;if state = 0 -> menu option is selected
+;if state !=0 -> freq/number is selected according to the option we are in..
+check        mov.b R14,&P9OUT
+             cmp.b #0x00,state
+             jne   checkstate2  
+             cmp   #0x06,R14
+             jhs   error_s
+             cmp   #0x01,R14
+             jeq   Option1
+             cmp   #0x02,R14
+             jeq   Option2
+             cmp   #0x03,R14
+             jeq   Option3
+             cmp   #0x04,R14
+             jeq   Option4
+             cmp   #0x05,R14
+             jeq   Option5
+            
+             
+
+;selecting Sync frequency 
+checkstate2  cmp.b #0x02,state
+             jne   checkstate3
+             cmp   #0x04,R14
+             jhs   error_s
+             cmp   #0x00,R14
+             jeq   error_s             
+             rla   R14
+             mov.b R14,ModFreq
+             call  #PrintChoice
+             mov.b #0x00,state
+             call  #firstMenu
+             jmp   exitK 
+
+;selecting Modulation frequency 
+checkstate3  cmp.b #0x03,state
+             jne   checkstate4
+             cmp   #0x03,R14
+             jhs   error_s
+             cmp   #0x00,R14
+             jeq   error_s
+             mov.b R14,Sync
+             call  #PrintChoice
+             mov.b #0x00,state
+             call  #firstMenu
+             jmp   exitK 
+             
+;selecting a number from the key pad to generante the signal          
+checkstate4  cmp.b   #0x04,state 
+             jne     checkstate5
+            ; mov.b   R14,BSignal
+             mov.b   Sync,R8     ;moves sync frequency to R8
+             mov.b   ModFreq,R9  ;moves modulation frequency to R9
+             mov.b   R14,R10  ;moves the choosen binary number to R10
+             mov.b   #0x06,R12
+SetupCA0       mov.w   #CCIE,&TACCTL0            ; TACCR0 interrupt enabled
+               mov.w   #10600,&TACCR0            ;
+SetupCB0       mov.w   #CCIE,&TBCCTL0          ; TBCCR0 interrupt enabled
+             
+SetupTA         mov.w   #TASSEL_2+MC_1,&TACTL   ; SMCLK, up mode
+
+SetupTB         mov.w   #TBSSEL_2+MC_1,&TBCTL   ; SMCLK, up mode
+SetupADC12      mov.w   #REF2_5V+REFON,&ADC12CTL0       ; Internal 2.5V ref on
+SetupDAC12_0   	mov.w   #DAC12SREF1+DAC12IR+DAC12AMP_5,&DAC12_0CTL ;bit DAC12SREF1=0 so, internal 										      ;ref voltage of 2.5v
+              				
+               call    #PrintQuitMsg
+               mov.b   #0x00,state
+
+checkstate5    jmp   exitK             
+
+
+;error costomed msg 
+error_s     
+             Lcd_cmd  #0x01 
+             Lcd_cmd  #0x02                
+             mov      #st_error,R5
+             call     #PRINT_STR
+             bic.b    #0xE0,&P3OUT
+             call     #Delay1s
+             call     #Delay1s
+             cmp.b    #0x00,state
+             jeq      st0err
+             cmp.b    #0x02,state
+             jeq      st2err
+             cmp.b    #0x03,state
+             jeq      st3err
+             cmp.b    #0x04,state
+             jne      exitK
+             call     #ActionMSG
+             jmp      exitK
+st2err       call     #Modulation
+             jmp      exitK
+st3err       call     #syncfreq
+             jmp      exitK 
+st0err       call     #firstMenu          
+             jmp      exitK 
+
+;selecting option 1 from menu 
+Option1      mov.b  R14,state
+             call   #instructions
+             mov.b  #0x00,state
+             jmp    exitK  
+
+;selecting option 2 from menu 
+Option2      mov.b R14,state
+             call  #Modulation
+             jmp   exitK 
+
+;selecting option 3 from menu 
+Option3      mov.b R14,state
+             call  #syncfreq
+             jmp   exitK 
+
+;selecting option 4 from menu 
+Option4      mov.b R14,state 
+             call  #ActionMSG
+             jmp   exitK
+
+;selecting option 5 from menu 
+Option5      mov.b   #0x01,flag
+             call    #quit
+             clr.b   &P9OUT
+             bic     #0x00E0,&DAC12_0CTL
+             jmp     exitK
+
+exitK        clr.b   &P10OUT
+             clr.b   &P9OUT
+             bic.b   #0x0f,&P2IFG  
+             reti
+                       
+
+;-------------------------------------------------------------------------------
+PORT1_ISR    ;Interrupt for Port1, responsible for Push Buttons input. involves in rolling up and down the menu.
+;-------------------------------------------------------------------------------             
+             bit.b  #0x01,&P1IFG   ;check if P1.0 is pushed
+             jnz    P1_0 
+             bit.b  #0x02,&P1IFG   ;check if P1.1 is pushed
+             jnz    P1_1
+             bit.b  #0x04,&P1IFG   ;check if P1.2 is pushed
+             jnz    P1_2
+             bit.b  #0x08,&P1IFG   ;check if P1.3 is pushed
+             jnz    P1_3
+             bic.b  #0x0f,&P1IFG
+             reti                  ; interrupt hapened from another source
+; move right ->
+P1_0         Debounce #PullUp      
+             cmp.b    #0x01,flag
+             jeq      wakeup  
+             cmp.b    #0x00,flag
+             cmp.b    #0x00,state
+             jeq      awake
+             jmp      exitLPM0 
+wakeup       mov.b    #0x00,flag
+             mov.b    #0x00,state
+             Lcd_cmd  #0x01
+             call     #firstMenu 
+             call     #Delay1s
+             call     #Delay1s
+             bis.b    #0x0F,&P1IE
+             bis.b    #0x01,&P2IE
+             jmp      exitLPM0 
+awake        cmp.b    #0x00,updown
+             jeq      goright
+             jmp      exitLPM0 
+goright      Lcd_cmd  #0xC0                ; goes right for menu 1,2
+             mov      #s22,R5
+             call     #PRINT_STR
+             jmp      exitLPM0 
+            
+; move left  <-
+P1_1         Debounce #PullUp      
+             cmp.b    #0x00,state 
+             jeq      checkmenu12
+             jmp      exitLPM0 
+checkmenu12  cmp.b    #0x00,updown
+             jeq      goleft
+             jmp      exitLPM0 
+goleft       Lcd_cmd  #0xC0                ; goes left for menu 1,2
+             mov      #s2,R5
+             call     #PRINT_STR
+             jmp      exitLPM0 
+             
+; move up ^
+P1_2         Debounce #PullDown    
+             tst.b    updown 
+             jeq      noup
+             cmp.b    #0x01,updown
+             jeq      firstOptions
+             dec.b    updown 
+             Lcd_cmd  #0x02                
+             mov      #s3,R5
+             call     #PRINT_STR
+             Lcd_cmd  #0xC0                
+             mov      #s4,R5
+             call     #PRINT_STR
+noup         jmp      exitLPM0 
+firstOptions dec.b    updown
+             call     #firstMenu
+             jmp      exitLPM0 
+             
+; move down  v
+P1_3         Debounce #PullDown    
+             cmp.b    #0x02,updown
+             jeq      nodown
+             cmp.b    #0x01,updown
+             jeq      quitOption
+             inc.b    updown 
+             Lcd_cmd  #0x02                
+             mov      #s3,R5
+             call     #PRINT_STR
+             Lcd_cmd  #0xC0                
+             mov      #s4,R5
+             call     #PRINT_STR
+nodown       jmp      exitLPM0 
+
+quitOption   inc.b    updown
+             Lcd_cmd  #0x01 
+             Lcd_cmd  #0x02                
+             mov      #s5,R5
+             call     #PRINT_STR
+             mov.w   #MC_0,&TACTL
+             mov.w   #MC_0,&TBCTL
+exitLPM0     bic.b    #0x0F,&P1IFG
+             reti
+
+;-------------------------------------------------------------------------------
+; delay of 1 sec
+;-------------------------------------------------------------------------------
+Delay1s      mov #052400,R15
+wait         DEC R15
+             NOP
+             NOP
+             NOP
+             NOP
+             NOP
+             NOP
+             NOP
+             JNZ wait
+             ret 
+;-------------------------------------------------------------------------------
+
+       ENDMOD 
+;===============================================================================
+                
+       END
+
