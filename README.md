@@ -19,3 +19,4 @@ Explanation for menu options:
 2. Modultion Frequency: Prints optional modulation frequency values. ( 2Khz 4KHz 6KHz )
 3. Sync Frequency: Prints optional syncronic frequency values. ( 1Khz 2KHz )
 4. Action: Generates a digital signal which follows the required frequences, using DAC0 while the signal cosists of two parts, the syncronic part, a continuos rectangular signal with the choosen frequency and the modulation part, which is modulation of a binary number choosen with the Key-Pad. (triangle signal for the bit 1 and zero sinal for the bit 0)
+5. Quit: Stops the program and goes sleep mode.
