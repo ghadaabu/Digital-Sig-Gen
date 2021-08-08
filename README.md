@@ -34,19 +34,7 @@ Connections are made as follows:
 * Signal Out (DAC0) to P6.6
 * LEDs A to Port 9
 * Calls & Rows - Key-Pad to Port 10  
---------------------------------------
-### Functions
-The code consisted of multiple files, each one contains a module with the relevant functions.
-1. Functons.s43 
-     - Delay1s: Delay of 1 sec
-     - PORT2_ISR: Interrupt for Port2, responsible for Key-Pad input. checks the validation of an input and saves the input's value.
-     -  PORT2_ISR: Interrupt for Port2, responsible for Push Buttons input. involves in rolling up and down the menu.
-2. LCDSetUp
-     - LCD_SETUP: Sets up the LCD.
-     - Lcd_strobe: restarts the LCD.
-     - Lcd_data: Prints a character on LCD screen at the cursor position, gets the input using R14 (Regester 14).
-     - PRINT_STR: Prints a string (16 bits) on LCD screen, gets string address using R5.
-     - firstMenu: Prints the first two options 
+
 
 
  
